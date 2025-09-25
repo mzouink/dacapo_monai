@@ -1,0 +1,192 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: true
+        type: string
+
+env:
+  PYTHON_VERSION: "3.9"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libhdf5-dev pkg-config
+        
+    - name: Install dependencies and test
+      run: |
+        python -m pip install --upgrade pip
+        cd dacapo_monai
+        pip install -e ".[dev]"
+        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        python -m pytest tests/ -v
+
+  build-and-publish:
+    runs-on: ubuntu-latest
+    needs: test
+    environment: release
+    permissions:
+      id-token: write  # For trusted publishing to PyPI
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+        
+    - name: Update version if manual dispatch
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        cd dacapo_monai
+        sed -i "s/version = \".*\"/version = \"${{ github.event.inputs.version }}\"/" pyproject.toml
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pyproject.toml
+        git commit -m "Bump version to ${{ github.event.inputs.version }}" || exit 0
+        
+    - name: Build package
+      run: |
+        cd dacapo_monai
+        python -m build
+        
+    - name: Check package
+      run: |
+        cd dacapo_monai
+        twine check dist/*
+        
+    - name: Publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        packages-dir: dacapo_monai/dist/
+        
+    - name: Test install from Test PyPI
+      run: |
+        sleep 60  # Wait for package to be available
+        pip install --index-url https://test.pypi.org/simple/ dacapo-monai
+        python -c "import dacapo_monai; print('✅ Test PyPI installation successful')"
+        
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dacapo_monai/dist/
+
+  build-docs:
+    runs-on: ubuntu-latest
+    needs: build-and-publish
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        cd dacapo_monai
+        pip install -e ".[docs]"
+        pip install sphinx sphinx-design furo myst-parser sphinx-copybutton sphinxcontrib-mermaid
+        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        
+    - name: Build documentation
+      run: |
+        cd dacapo_monai/docs
+        sphinx-build -b html . _build/html
+        
+    - name: Deploy documentation
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: dacapo_monai/docs/_build/html/
+        publish_branch: gh-pages
+        force_orphan: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
+        commit_message: 'Deploy documentation for release'
+
+  create-github-release:
+    runs-on: ubuntu-latest
+    needs: build-and-publish
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.event.inputs.version }}
+        release_name: DaCapo-MONAI v${{ github.event.inputs.version }}
+        body: |
+          ## DaCapo-MONAI v${{ github.event.inputs.version }}
+          
+          ### 🎉 What's New
+          - Seamless integration between DaCapo toolbox and MONAI transforms
+          - Pre-configured transform presets for SSL and medical imaging
+          - Type-safe API with comprehensive documentation
+          
+          ### 📦 Installation
+          ```bash
+          pip install dacapo-monai==${{ github.event.inputs.version }}
+          ```
+          
+          ### 📚 Documentation
+          - [Documentation](https://dacapo-toolbox.github.io/dacapo-monai/)
+          - [API Reference](https://dacapo-toolbox.github.io/dacapo-monai/api_reference/)
+          - [Examples](https://dacapo-toolbox.github.io/dacapo-monai/examples/)
+          
+          ### 🐛 Bug Reports
+          Report issues at [GitHub Issues](https://github.com/dacapo-toolbox/dacapo-monai/issues)
+        draft: false
+        prerelease: false
+
+  notify-success:
+    runs-on: ubuntu-latest
+    needs: [build-and-publish, build-docs]
+    if: success()
+    
+    steps:
+    - name: Notify success
+      run: |
+        echo "🎉 Release completed successfully!"
+        echo "📦 Package published to PyPI"  
+        echo "📚 Documentation updated"
+        echo "🚀 DaCapo-MONAI is ready for use!"

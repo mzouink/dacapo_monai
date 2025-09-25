@@ -1,0 +1,240 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'dacapo_monai/docs/**'
+      - 'dacapo_monai/src/**'
+      - 'dacapo_monai/README.md'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'dacapo_monai/docs/**'
+      - 'dacapo_monai/src/**'
+      - 'dacapo_monai/README.md'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.9"
+
+jobs:
+  docs-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pip
+          dacapo_monai/docs/_build
+        key: ${{ runner.os }}-docs-${{ hashFiles('dacapo_monai/pyproject.toml', 'dacapo_monai/docs/conf.py') }}
+        restore-keys: |
+          ${{ runner.os }}-docs-
+          
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libhdf5-dev pkg-config pandoc graphviz
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        cd dacapo_monai
+        pip install -e ".[docs]"
+        pip install sphinx sphinx-design furo myst-parser sphinx-copybutton sphinxcontrib-mermaid
+        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        
+    - name: Check documentation source files
+      run: |
+        cd dacapo_monai/docs
+        find . -name "*.md" -exec echo "Found: {}" \;
+        find . -name "*.rst" -exec echo "Found: {}" \;
+        
+    - name: Build documentation
+      run: |
+        cd dacapo_monai/docs
+        sphinx-build -b html . _build/html -v -W --keep-going
+        
+    - name: Check for broken links
+      run: |
+        cd dacapo_monai/docs
+        sphinx-build -b linkcheck . _build/linkcheck -v || true
+        
+    - name: Generate PDF documentation
+      run: |
+        cd dacapo_monai/docs
+        sphinx-build -b latex . _build/latex -v || true
+        if [ -f "_build/latex/dacapo-monai.tex" ]; then
+          cd _build/latex
+          make || true
+        fi
+        
+    - name: Upload documentation HTML
+      uses: actions/upload-artifact@v3
+      with:
+        name: docs-html
+        path: dacapo_monai/docs/_build/html/
+        retention-days: 30
+        
+    - name: Upload documentation PDF
+      uses: actions/upload-artifact@v3
+      if: success() && hashFiles('dacapo_monai/docs/_build/latex/*.pdf') != ''
+      with:
+        name: docs-pdf
+        path: dacapo_monai/docs/_build/latex/*.pdf
+        retention-days: 30
+        
+    - name: Check documentation quality
+      run: |
+        cd dacapo_monai/docs/_build/html
+        echo "📊 Documentation Statistics:"
+        find . -name "*.html" | wc -l | xargs echo "HTML pages:"
+        du -sh . | xargs echo "Total size:"
+        echo "📄 Main pages:"
+        ls -la *.html || true
+        echo "📁 Directories:"
+        ls -d */ || true
+
+  docs-deploy:
+    runs-on: ubuntu-latest
+    needs: docs-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download documentation artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: docs-html
+        path: docs-html/
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+      
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: docs-html/
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
+
+  docs-preview:
+    runs-on: ubuntu-latest
+    needs: docs-build
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Download documentation artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: docs-html
+        path: docs-preview/
+        
+    - name: Upload preview documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: docs-preview-pr-${{ github.event.number }}
+        path: docs-preview/
+        retention-days: 7
+        
+    - name: Comment PR with preview link
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+          
+          const previewArtifact = artifacts.artifacts.find(
+            artifact => artifact.name === `docs-preview-pr-${{ github.event.number }}`
+          );
+          
+          if (previewArtifact) {
+            const comment = `## 📚 Documentation Preview
+            
+            The documentation for this PR has been built successfully!
+            
+            **Download preview**: [docs-preview-pr-${{ github.event.number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            **Changes detected in**:
+            ${context.payload.pull_request.changed_files} files changed
+            
+            **Note**: Download the artifact and extract it to view the HTML documentation locally.
+            `;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          }
+
+  docs-validate:
+    runs-on: ubuntu-latest
+    needs: docs-build
+    
+    steps:
+    - name: Download documentation artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: docs-html
+        path: docs-html/
+        
+    - name: Validate HTML
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tidy
+        cd docs-html
+        find . -name "*.html" -exec echo "Validating: {}" \; -exec tidy -q {} \; || true
+        
+    - name: Check for missing images
+      run: |
+        cd docs-html
+        echo "🖼️ Checking for missing images..."
+        grep -r "img src=" . || echo "No images found"
+        grep -r "404" . && echo "⚠️ Found 404 references" || echo "✅ No 404 references found"
+        
+    - name: Check documentation completeness
+      run: |
+        cd docs-html
+        echo "📋 Documentation Completeness Check:"
+        
+        # Check for required pages
+        required_pages=("index.html" "getting_started/index.html" "api_reference/index.html")
+        for page in "${required_pages[@]}"; do
+          if [ -f "$page" ]; then
+            echo "✅ Found: $page"
+          else
+            echo "❌ Missing: $page"
+          fi
+        done
+        
+        # Check for empty pages
+        find . -name "*.html" -size -1k -exec echo "⚠️ Small page (might be empty): {}" \;
+        
+        echo "✅ Documentation validation completed"

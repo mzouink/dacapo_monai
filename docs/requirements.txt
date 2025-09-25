@@ -1,0 +1,23 @@
+# Documentation build requirements
+# Install with: pip install -r docs/requirements.txt
+
+# Core Sphinx
+sphinx>=6.0.0
+sphinx-design>=0.4.0
+furo>=2023.3.27
+
+# Markdown support
+myst-parser>=1.0.0
+
+# Extensions
+sphinx-copybutton>=0.5.0
+sphinxcontrib-mermaid>=0.8.0
+sphinx-autobuild>=2021.3.14
+sphinx-autodoc-typehints>=1.23.0
+
+# Additional utilities
+sphinx-external-toc>=0.3.0
+sphinx-togglebutton>=0.3.0
+
+# For PDF generation (optional)
+# sphinx-latex-builder>=0.2.0
