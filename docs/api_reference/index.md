@@ -1,3 +1,4 @@
+````markdown
 # API Reference
 
 Complete API documentation for all DaCapo-MONAI modules.
@@ -10,46 +11,6 @@ transforms
 utils
 ```
 
-## Quick Reference
-
-### Main Functions
-
-```{eval-rst}
-.. currentmodule:: dacapo_monai
-
-.. autosummary::
-   :toctree: generated/
-   
-   iterable_dataset
-   PipelineDataset
-```
-
-### Transform Presets
-
-```{eval-rst}
-.. currentmodule:: dacapo_monai.transforms
-
-.. autosummary::
-   :toctree: generated/
-   
-   SSLTransforms
-   MedicalImagingTransforms
-   ContrastiveLearningTransforms
-```
-
-### Utilities
-
-```{eval-rst}
-.. currentmodule:: dacapo_monai.utils
-
-.. autosummary::
-   :toctree: generated/
-   
-   MonaiToDacapoAdapter
-   add_channel_dim
-   remove_channel_dim
-```
-
 ## Module Overview
 
 | Module | Description |
@@ -57,3 +18,25 @@ utils
 | {doc}`dataset` | Core dataset classes with MONAI transform integration |
 | {doc}`transforms` | Pre-configured transform presets for common use cases |
 | {doc}`utils` | Format conversion utilities and adapters |
+
+## Main Components
+
+The DaCapo-MONAI library provides the following main components:
+
+### Dataset Integration
+- {doc}`generated/dacapo_monai.iterable_dataset`: Create iterable datasets with MONAI transform support
+- {doc}`generated/dacapo_monai.PipelineDataset`: Core dataset class for DaCapo integration
+- Configuration classes for different augmentation strategies
+
+### Transform Presets
+- `SSLTransforms`: Self-supervised learning transform configurations
+- `MedicalImagingTransforms`: Common medical imaging preprocessing
+- `ContrastiveLearningTransforms`: Transforms for contrastive learning
+
+### Utilities
+- Format conversion between MONAI and DaCapo data formats
+- Metadata preservation helpers
+- Channel dimension management utilities
+
+For detailed documentation of each component, see the individual module pages.
+````

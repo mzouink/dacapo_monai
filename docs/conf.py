@@ -13,6 +13,22 @@ from pathlib import Path
 # Add the source code to the path
 sys.path.insert(0, os.path.abspath("../../src"))
 
+# Try to import the package to check if it's available
+package_available = False
+try:
+    import dacapo_monai
+
+    package_available = True
+    print(
+        f"Successfully imported dacapo_monai version: {getattr(dacapo_monai, '__version__', 'unknown')}"
+    )
+except ImportError as e:
+    print(f"Warning: Could not import dacapo_monai: {e}")
+    print("Documentation will be built with limited functionality")
+except Exception as e:
+    print(f"Unexpected error importing dacapo_monai: {e}")
+    print("Documentation will be built with limited functionality")
+
 project = "DaCapo-MONAI"
 copyright = "2025, DaCapo-MONAI Contributors"
 author = "DaCapo-MONAI Contributors"
@@ -24,7 +40,6 @@ version = "0.1.0"
 
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
@@ -35,6 +50,12 @@ extensions = [
     "sphinx_design",
     "sphinxcontrib.mermaid",
 ]
+
+# Conditionally add autosummary only if package is available and not disabled by env
+if package_available and not os.getenv("SPHINX_NO_AUTOSUMMARY"):
+    extensions.append("sphinx.ext.autosummary")
+else:
+    print("Skipping autosummary extension due to import issues or environment setting")
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
@@ -86,9 +107,13 @@ autodoc_default_options = {
     "special-members": "__init__",
     "undoc-members": True,
     "exclude-members": "__weakref__",
+    "ignore-module-all": True,
 }
 autodoc_typehints = "description"
 autodoc_typehints_format = "short"
+
+# Prevent Sphinx from failing on import errors
+autodoc_mock_imports_extended = True
 
 # Mock imports for packages that might not be available during documentation build
 autodoc_mock_imports = [
@@ -97,12 +122,37 @@ autodoc_mock_imports = [
     "dacapo_toolbox",
     "gunpowder",
     "funlib",
+    "funlib.geometry",
+    "funlib.persistence",
     "numpy",
+    "zarr",
+    "h5py",
+    "scipy",
+    "skimage",
+    "PIL",
+    "cv2",
+    "matplotlib",
 ]
 
-# Autosummary settings
-autosummary_generate = True
+# Autosummary settings (only if enabled)
+autosummary_generate = package_available and not os.getenv("SPHINX_NO_AUTOSUMMARY")
 autosummary_imported_members = False  # Set to False to avoid import issues
+autosummary_ignore_module_all = False
+
+
+# Handle import failures gracefully
+def autodoc_skip_member(app, what, name, obj, skip, options):
+    """Skip members that can't be imported"""
+    if skip:
+        return True
+    try:
+        # Try to access the object to see if it can be imported
+        _ = str(obj)
+        return False
+    except Exception:
+        print(f"Skipping {name} due to import error")
+        return True
+
 
 # Intersphinx mapping
 intersphinx_mapping = {
@@ -154,4 +204,10 @@ html_js_files = [
 ]
 
 # Suppress warnings for missing references during development
-suppress_warnings = ["ref.any"]
+suppress_warnings = ["ref.any", "autosummary", "autodoc"]
+
+
+def setup(app):
+    """Sphinx setup hook"""
+    app.connect("autodoc-skip-member", autodoc_skip_member)
+    return {"version": "0.1", "parallel_read_safe": True}
