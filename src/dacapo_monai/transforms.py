@@ -368,7 +368,8 @@ class ContrastiveLearningTransforms:
         keys: Sequence[str] = ("image",),
         crop_size: Sequence[int] = (96, 96, 96),
         intensity_range: tuple[float, float] = (0, 255),
-    ) -> tuple[Compose, Compose]:
+        return_both: bool = False,
+    ) -> Union[Compose, tuple[Compose, Compose]]:
         """
         BYOL-style transforms for 3D data.
 
@@ -378,9 +379,11 @@ class ContrastiveLearningTransforms:
             keys: Keys to process
             crop_size: Size for random cropping
             intensity_range: Input intensity range
+            return_both: If True, returns tuple of (online_transforms, target_transforms).
+                        If False, returns only online_transforms for simple usage.
 
         Returns:
-            Tuple of (online_transforms, target_transforms)
+            Single Compose transform (online) or tuple of (online_transforms, target_transforms)
         """
         base_transforms: List[Any] = [
             # Add channel dimension
@@ -472,4 +475,11 @@ class ContrastiveLearningTransforms:
             ),
         ]
 
-        return Compose(online_transforms), Compose(target_transforms)
+        online_compose = Compose(online_transforms)
+        target_compose = Compose(target_transforms)
+
+        if return_both:
+            return online_compose, target_compose
+        else:
+            # Return just the online transforms for simple testing
+            return online_compose

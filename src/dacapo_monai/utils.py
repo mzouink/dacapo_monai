@@ -11,7 +11,7 @@ import numpy as np
 
 
 def add_channel_dim(
-    batch: Dict[str, Any], keys: Optional[List[str]] = None
+    batch: Dict[str, Any], keys: Optional[Union[str, List[str]]] = None
 ) -> Dict[str, Any]:
     """
     Add channel dimension to specified keys in a batch.
@@ -35,6 +35,8 @@ def add_channel_dim(
         keys = [
             k for k, v in batch.items() if isinstance(v, (torch.Tensor, np.ndarray))
         ]
+    elif isinstance(keys, str):
+        keys = [keys]
 
     result = batch.copy()
     for key in keys:
@@ -48,7 +50,7 @@ def add_channel_dim(
 
 
 def remove_channel_dim(
-    batch: Dict[str, Any], keys: Optional[List[str]] = None
+    batch: Dict[str, Any], keys: Optional[Union[str, List[str]]] = None
 ) -> Dict[str, Any]:
     """
     Remove channel dimension from specified keys in a batch.
@@ -70,6 +72,8 @@ def remove_channel_dim(
     """
     if keys is None:
         keys = [k for k, v in batch.items() if isinstance(v, torch.Tensor)]
+    elif isinstance(keys, str):
+        keys = [keys]
 
     result = batch.copy()
     for key in keys:
@@ -293,14 +297,14 @@ class MonaiToDacapoAdapter:
     def __init__(
         self,
         monai_transforms: Callable[[Dict[str, Any]], Dict[str, Any]],
-        keys: list[str],
+        keys: Optional[List[str]] = None,
     ) -> None:
         """
         Initialize the adapter.
 
         Args:
             monai_transforms: MONAI transform or Compose object
-            keys: Keys that need format conversion
+            keys: Keys that need format conversion. If None, auto-detect from batch
         """
         self.monai_transforms = monai_transforms
         self.keys = keys
@@ -315,14 +319,23 @@ class MonaiToDacapoAdapter:
         Returns:
             Transformed batch in DaCapo format
         """
+        # Determine keys if not specified
+        keys = self.keys
+        if keys is None:
+            keys = [
+                k
+                for k, v in batch.items()
+                if isinstance(v, (torch.Tensor, np.ndarray)) and k != "metadata"
+            ]
+
         # Convert to MONAI format
-        monai_batch = batch_to_monai_format(batch, self.keys)
+        monai_batch = batch_to_monai_format(batch, keys)
 
         # Apply MONAI transforms
         transformed_batch = self.monai_transforms(monai_batch)
 
         # Convert back to DaCapo format
-        dacapo_batch = batch_from_monai_format(transformed_batch, self.keys)
+        dacapo_batch = batch_from_monai_format(transformed_batch, keys)
 
         return dacapo_batch
 
