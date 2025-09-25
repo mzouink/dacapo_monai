@@ -4,15 +4,15 @@ on:
   push:
     branches: [ main ]
     paths: 
-      - 'dacapo_monai/docs/**'
-      - 'dacapo_monai/src/**'
-      - 'dacapo_monai/README.md'
+      - 'docs/**'
+      - 'src/**'
+      - 'README.md'
   pull_request:
     branches: [ main ]
     paths:
-      - 'dacapo_monai/docs/**'
-      - 'dacapo_monai/src/**'
-      - 'dacapo_monai/README.md'
+      - 'docs/**'
+      - 'src/**'
+      - 'README.md'
   workflow_dispatch:
 
 env:
@@ -36,8 +36,8 @@ jobs:
       with:
         path: |
           ~/.cache/pip
-          dacapo_monai/docs/_build
-        key: ${{ runner.os }}-docs-${{ hashFiles('dacapo_monai/pyproject.toml', 'dacapo_monai/docs/conf.py') }}
+          docs/_build
+        key: ${{ runner.os }}-docs-${{ hashFiles('pyproject.toml', 'docs/conf.py') }}
         restore-keys: |
           ${{ runner.os }}-docs-
           
@@ -82,15 +82,15 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: docs-html
-        path: dacapo_monai/docs/_build/html/
+        path: docs/_build/html/
         retention-days: 30
         
     - name: Upload documentation PDF
       uses: actions/upload-artifact@v3
-      if: success() && hashFiles('dacapo_monai/docs/_build/latex/*.pdf') != ''
+      if: success() && hashFiles('docs/_build/latex/*.pdf') != ''
       with:
         name: docs-pdf
-        path: dacapo_monai/docs/_build/latex/*.pdf
+        path: docs/_build/latex/*.pdf
         retention-days: 30
         
     - name: Check documentation quality

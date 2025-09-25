@@ -141,7 +141,7 @@ def main():
     print("=" * 40)
 
     # Find .github/workflows directory
-    current_dir = Path(__file__).parent.parent
+    current_dir = Path(__file__).parent
     workflows_dir = current_dir / ".github" / "workflows"
 
     print(f"📁 Checking workflows in: {workflows_dir}")
