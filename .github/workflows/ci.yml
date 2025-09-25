@@ -42,7 +42,6 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        cd dacapo_monai
         pip install -e ".[dev]"
         
     - name: Install additional test dependencies
@@ -52,18 +51,15 @@ jobs:
         
     - name: Run linting
       run: |
-        cd dacapo_monai
         python -m flake8 src/dacapo_monai --count --select=E9,F63,F7,F82 --show-source --statistics
         python -m flake8 src/dacapo_monai --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
         
     - name: Run type checking
       run: |
-        cd dacapo_monai
         python -m mypy src/dacapo_monai --ignore-missing-imports --no-strict-optional
         
     - name: Run tests
       run: |
-        cd dacapo_monai
         python -m pytest tests/ -v --cov=src/dacapo_monai --cov-report=xml --cov-report=term
         
     - name: Upload coverage reports
@@ -96,18 +92,15 @@ jobs:
     - name: Install package
       run: |
         python -m pip install --upgrade pip
-        cd dacapo_monai
         pip install -e .
         pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
         
     - name: Run integration tests
       run: |
-        cd dacapo_monai
         python demo.py
         
     - name: Test examples
       run: |
-        cd dacapo_monai
         python examples/basic_medical_imaging.py || true  # Allow to fail if dependencies missing
         python examples/ssl_contrastive_learning.py || true
         python examples/migration_example.py || true
@@ -141,19 +134,16 @@ jobs:
     - name: Install documentation dependencies
       run: |
         python -m pip install --upgrade pip
-        cd dacapo_monai
         pip install -e ".[docs]"
         pip install sphinx sphinx-design furo myst-parser sphinx-copybutton sphinxcontrib-mermaid
         pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
         
     - name: Build documentation
-      run: |
-        cd dacapo_monai/docs
+      run: |/docs
         sphinx-build -b html . _build/html -W --keep-going
         
     - name: Check documentation links
-      run: |
-        cd dacapo_monai/docs
+      run: |/docs
         sphinx-build -b linkcheck . _build/linkcheck || true
         
     - name: Upload documentation artifacts
@@ -209,12 +199,10 @@ jobs:
         
     - name: Build package
       run: |
-        cd dacapo_monai
         python -m build
         
     - name: Check package
       run: |
-        cd dacapo_monai
         twine check dist/*
         
     - name: Upload package artifacts
@@ -244,13 +232,11 @@ jobs:
         
     - name: Run safety check
       run: |
-        cd dacapo_monai
         pip install -e .
         safety check --json || true
         
     - name: Run bandit security scan
       run: |
-        cd dacapo_monai
         bandit -r src/dacapo_monai -f json -o bandit-report.json || true
         
     - name: Upload security scan results

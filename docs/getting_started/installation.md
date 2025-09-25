@@ -17,7 +17,6 @@ For development or to get the latest features:
 ```bash
 # Clone the repository
 git clone https://github.com/dacapo-toolbox/dacapo-monai.git
-cd dacapo-monai
 
 # Install in development mode
 pip install -e ".[dev]"

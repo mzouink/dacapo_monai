@@ -49,30 +49,29 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        cd dacapo_monai
         pip install -e ".[docs]"
         pip install sphinx sphinx-design furo myst-parser sphinx-copybutton sphinxcontrib-mermaid
         pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
         
     - name: Check documentation source files
       run: |
-        cd dacapo_monai/docs
+        cd docs
         find . -name "*.md" -exec echo "Found: {}" \;
         find . -name "*.rst" -exec echo "Found: {}" \;
         
     - name: Build documentation
       run: |
-        cd dacapo_monai/docs
+        cd docs
         sphinx-build -b html . _build/html -v -W --keep-going
         
     - name: Check for broken links
       run: |
-        cd dacapo_monai/docs
+        cd docs
         sphinx-build -b linkcheck . _build/linkcheck -v || true
         
     - name: Generate PDF documentation
       run: |
-        cd dacapo_monai/docs
+        cd docs
         sphinx-build -b latex . _build/latex -v || true
         if [ -f "_build/latex/dacapo-monai.tex" ]; then
           cd _build/latex
@@ -96,7 +95,7 @@ jobs:
         
     - name: Check documentation quality
       run: |
-        cd dacapo_monai/docs/_build/html
+        cd docs/_build/html
         echo "📊 Documentation Statistics:"
         find . -name "*.html" | wc -l | xargs echo "HTML pages:"
         du -sh . | xargs echo "Total size:"

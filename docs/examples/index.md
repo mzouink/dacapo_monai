@@ -66,7 +66,6 @@ All examples are available in the `examples/` directory:
 ```bash
 # Clone the repository
 git clone https://github.com/dacapo-toolbox/dacapo-monai.git
-cd dacapo-monai
 
 # Install the package
 pip install -e ".[examples]"

@@ -37,7 +37,6 @@ jobs:
     - name: Install dependencies and test
       run: |
         python -m pip install --upgrade pip
-        cd dacapo_monai
         pip install -e ".[dev]"
         pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
         python -m pytest tests/ -v
@@ -66,7 +65,6 @@ jobs:
     - name: Update version if manual dispatch
       if: github.event_name == 'workflow_dispatch'
       run: |
-        cd dacapo_monai
         sed -i "s/version = \".*\"/version = \"${{ github.event.inputs.version }}\"/" pyproject.toml
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -75,12 +73,10 @@ jobs:
         
     - name: Build package
       run: |
-        cd dacapo_monai
         python -m build
         
     - name: Check package
       run: |
-        cd dacapo_monai
         twine check dist/*
         
     - name: Publish to Test PyPI
@@ -116,14 +112,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        cd dacapo_monai
         pip install -e ".[docs]"
         pip install sphinx sphinx-design furo myst-parser sphinx-copybutton sphinxcontrib-mermaid
         pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
         
     - name: Build documentation
-      run: |
-        cd dacapo_monai/docs
+      run: |/docs
         sphinx-build -b html . _build/html
         
     - name: Deploy documentation

@@ -51,7 +51,6 @@ How to build and contribute to documentation.
 ```bash
 # Clone the repository
 git clone https://github.com/dacapo-toolbox/dacapo-monai.git
-cd dacapo-monai
 
 # Install in development mode
 pip install -e ".[dev]"

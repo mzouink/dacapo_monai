@@ -105,13 +105,8 @@ dataset = iterable_dataset(datasets, shapes, transforms=transforms)
 ### For Users
 ```bash
 # Clone the repository
-cd dacapo_monai
-
-# Install in development mode
-python setup.py
-
 # Or install with pip (once published)
-pip install dacapo-monai
+pip install -e .
 ```
 
 ### For Developers
