@@ -12,7 +12,7 @@ import time
 import functools
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Callable, Any, Union
+from typing import Callable, Any, Union, Generator
 
 import gunpowder as gp
 from gunpowder.nodes.gp_graph_source import GraphSource as GPGraphSource
@@ -60,8 +60,8 @@ def nx_to_gp_graph(graph: nx.Graph, scale: Sequence[float]) -> gp.Graph:
                 attrs=attrs,
             )
             for node, attrs in graph.nodes(data=True)
-        ],  # type: ignore[arg-type]
-        [gp.Edge(u, v, attrs) for u, v, attrs in graph.edges(data=True)],  # type: ignore[arg-type]
+        ],
+        [gp.Edge(u, v, attrs) for u, v, attrs in graph.edges(data=True)],
         gp.GraphSpec(Roi((None,) * len(scale), (None,) * len(scale))),
     )
 
@@ -77,7 +77,7 @@ def gp_to_nx_graph(graph: gp.Graph) -> nx.Graph:
 
 
 def create_monai_adapter(
-    monai_transforms: Callable,
+    monai_transforms: Callable[[dict[str, Any]], dict[str, Any]],
 ) -> Callable[[dict[str, Any]], dict[str, Any]]:
     """
     Create an adapter function that makes MONAI transforms compatible with DaCapo's batch format.
@@ -111,7 +111,7 @@ def create_monai_adapter(
         metadata = batch.pop("metadata", None)
 
         # Apply MONAI transforms
-        transformed_batch = monai_transforms(batch)
+        transformed_batch: dict[str, Any] = monai_transforms(batch)
 
         # Restore metadata if it existed
         if metadata is not None:
@@ -201,7 +201,7 @@ class PipelineDataset(torch.utils.data.IterableDataset):
         self.keys = keys
         self.transforms = transforms
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[dict[str, Any], None, None]:
         while True:
             t1 = time.time()
             batch_request = self.request.copy()

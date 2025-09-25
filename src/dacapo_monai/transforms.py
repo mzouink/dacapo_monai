@@ -7,7 +7,7 @@ This module provides ready-to-use MONAI transform compositions for:
 - Contrastive learning setups
 """
 
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union, List
 
 try:
     from monai.transforms import (
@@ -191,7 +191,7 @@ class MedicalImagingTransforms:
         Returns:
             MONAI Compose transform for medical imaging
         """
-        transforms = []
+        transforms: List[Any] = []
 
         # Add channel dimension
         transforms.append(
@@ -382,7 +382,7 @@ class ContrastiveLearningTransforms:
         Returns:
             Tuple of (online_transforms, target_transforms)
         """
-        base_transforms = [
+        base_transforms: List[Any] = [
             # Add channel dimension
             Lambda(
                 func=lambda x: {

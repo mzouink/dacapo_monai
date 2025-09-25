@@ -5,7 +5,7 @@ This module provides helper functions for common operations when working
 with MONAI transforms in DaCapo pipelines.
 """
 
-from typing import Any, Dict, Union, Optional, List
+from typing import Any, Dict, Union, Optional, List, Callable
 import torch
 import numpy as np
 
@@ -111,7 +111,9 @@ def ensure_tensor(
     return result
 
 
-def preserve_metadata(transform_func):
+def preserve_metadata(
+    transform_func: Callable[[Dict[str, Any]], Dict[str, Any]],
+) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
     """
     Decorator to preserve metadata when applying transforms.
 
@@ -147,7 +149,12 @@ def preserve_metadata(transform_func):
     return wrapper
 
 
-def create_channel_wrapper(keys: list[str]):
+def create_channel_wrapper(
+    keys: list[str],
+) -> Callable[
+    [Callable[[Dict[str, Any]], Dict[str, Any]]],
+    Callable[[Dict[str, Any]], Dict[str, Any]],
+]:
     """
     Create a transform wrapper that handles channel dimensions automatically.
 
@@ -172,7 +179,9 @@ def create_channel_wrapper(keys: list[str]):
         )
     """
 
-    def wrapper(transform_func):
+    def wrapper(
+        transform_func: Callable[[Dict[str, Any]], Dict[str, Any]],
+    ) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
         def wrapped_transform(batch: Dict[str, Any]) -> Dict[str, Any]:
             # Add channel dimensions
             batch_with_channels = add_channel_dim(batch, keys)
@@ -281,7 +290,11 @@ class MonaiToDacapoAdapter:
         )
     """
 
-    def __init__(self, monai_transforms, keys: list[str]):
+    def __init__(
+        self,
+        monai_transforms: Callable[[Dict[str, Any]], Dict[str, Any]],
+        keys: list[str],
+    ) -> None:
         """
         Initialize the adapter.
 
